@@ -30,6 +30,7 @@ public class Multiply extends BinaryOperation {
         Expression simplifiedLeft = left.simplify();
         Expression simplifiedRight = right.simplify();
 
+        // 1. Constant Folding
         if (simplifiedLeft instanceof Constant && simplifiedRight instanceof Constant) {
             return new Constant(((Constant) simplifiedLeft).getValue() * ((Constant) simplifiedRight).getValue());
         }
@@ -38,18 +39,30 @@ public class Multiply extends BinaryOperation {
         if (simplifiedLeft instanceof Constant && ((Constant) simplifiedLeft).getValue() == 1) return simplifiedRight;
         if (simplifiedRight instanceof Constant && ((Constant) simplifiedRight).getValue() == 1) return simplifiedLeft;
 
-        // Exponent Merging: x * x^a -> x^(a+1) (Fixes Test 4)
+        // 2. Advanced Power Merging (Fixes Test 2 and Test 4)
+        // Case: x^a * x^b -> x^(a+b)
+        if (simplifiedLeft instanceof Power && simplifiedRight instanceof Power) {
+            Power pLeft = (Power) simplifiedLeft;
+            Power pRight = (Power) simplifiedRight;
+            if (pLeft.getBase().equals(pRight.getBase())) {
+                return new Power(pLeft.getBase(), new Add(pLeft.getExponent(), pRight.getExponent())).simplify();
+            }
+        }
+        // Case: x * x^a -> x^(a+1)
         if (simplifiedRight instanceof Power && ((Power) simplifiedRight).getBase().equals(simplifiedLeft)) {
             return new Power(simplifiedLeft, new Add(((Power) simplifiedRight).getExponent(), new Constant(1))).simplify();
         }
+        // Case: x^a * x -> x^(a+1)
         if (simplifiedLeft instanceof Power && ((Power) simplifiedLeft).getBase().equals(simplifiedRight)) {
             return new Power(simplifiedRight, new Add(((Power) simplifiedLeft).getExponent(), new Constant(1))).simplify();
         }
 
         if (simplifiedLeft.equals(simplifiedRight)) return new Power(simplifiedLeft, new Constant(2)).simplify();
         
-        if (simplifiedRight instanceof Multiply && ((Multiply) simplifiedRight).left instanceof Constant) {
-            return new Multiply(((Multiply) simplifiedRight).left, new Multiply(simplifiedLeft, ((Multiply) simplifiedRight).right)).simplify();
+        // 3. Associative Reordering: (x * 2) * 3 -> x * 6
+        if (simplifiedRight instanceof Constant && simplifiedLeft instanceof Multiply && ((Multiply) simplifiedLeft).right instanceof Constant) {
+            double newVal = ((Constant) simplifiedRight).getValue() * ((Constant) ((Multiply) simplifiedLeft).right).getValue();
+            return new Multiply(((Multiply) simplifiedLeft).left, new Constant(newVal)).simplify();
         }
 
         return new Multiply(simplifiedLeft, simplifiedRight);

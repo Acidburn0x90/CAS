@@ -1,7 +1,6 @@
 import java.util.Map;
 
 public class Add extends BinaryOperation {
-    // We dont need fields for left and right because they are inherited from BinaryOperation(protected final Expression left; protected final Expression right;)
     public Add(Expression left, Expression right) {
         super(left, right);
     }
@@ -18,61 +17,29 @@ public class Add extends BinaryOperation {
 
     @Override
     public String toString() {
-        return "(" + left.toString() + " + " + right.toString() + ")";
+        return "(" + left + " + " + right + ")";
     }
 
     @Override
     public Expression simplify() {
-        Expression simplifiedLeft = left.simplify();
-        Expression simplifiedRight = right.simplify();
-        // If both sides are constants, we can evaluate them directly
-        if (simplifiedLeft instanceof Constant && simplifiedRight instanceof Constant) {
-        double value = ((Constant) simplifiedLeft).getValue() + ((Constant) simplifiedRight).getValue();
-        return new Constant(value);
+        Expression sL = left.simplify();
+        Expression sR = right.simplify();
+
+        if (sL instanceof Constant && sR instanceof Constant) {
+            return new Constant(((Constant) sL).getValue() + ((Constant) sR).getValue());
+        }
+        if (sL instanceof Constant && ((Constant) sL).getValue() == 0) return sR;
+        if (sR instanceof Constant && ((Constant) sR).getValue() == 0) return sL;
+
+        // Pattern: cx + x -> (c+1)x
+        if (sL instanceof Multiply && ((Multiply) sL).left instanceof Constant && ((Multiply) sL).right.equals(sR)) {
+            double c = ((Constant) ((Multiply) sL).left).getValue();
+            return new Multiply(new Constant(c + 1), sR).simplify();
+        }
+        
+        // Pattern: x + x -> 2x
+        if (sL.equals(sR)) return new Multiply(new Constant(2), sL).simplify();
+
+        return new Add(sL, sR);
     }
-        // If one side is a constant 0, we can simplify to the other side
-        if (simplifiedLeft instanceof Constant && ((Constant) simplifiedLeft).getValue() == 0) {
-            return simplifiedRight;
-        }
-        if (simplifiedRight instanceof Constant && ((Constant) simplifiedRight).getValue() == 0) {
-            return simplifiedLeft;
-        }
-        // Pattern 1: x + x = 2x
-        if (simplifiedLeft.equals(simplifiedRight)) {
-            return new Multiply(new Constant(2), simplifiedLeft).simplify();
-        }
-
-        // Pattern 2: (c*x) + x = (c+1)x
-        if (simplifiedLeft instanceof Multiply) {
-            Multiply leftMult = (Multiply) simplifiedLeft;
-            if (leftMult.getLeft() instanceof Constant && leftMult.getRight().equals(simplifiedRight)) {
-                double newVal = ((Constant) leftMult.getLeft()).getValue() + 1;
-                return new Multiply(new Constant(newVal), simplifiedRight).simplify();
-            }
-        }
-
-        // Pattern 3: x + (c*x) = (1+c)x
-        if (simplifiedRight instanceof Multiply) {
-            Multiply rightMult = (Multiply) simplifiedRight;
-            if (rightMult.getLeft() instanceof Constant && rightMult.getRight().equals(simplifiedLeft)) {
-                double newVal = 1 + ((Constant) rightMult.getLeft()).getValue();
-                return new Multiply(new Constant(newVal), simplifiedLeft).simplify();
-            }
-        }
-        // Pattern 4: (a*x) + (b*x) = (a+b)x
-        if (simplifiedLeft instanceof Multiply && simplifiedRight instanceof Multiply) {
-            Multiply leftMult = (Multiply) simplifiedLeft;
-            Multiply rightMult = (Multiply) simplifiedRight;
-            
-            if (leftMult.getLeft() instanceof Constant && rightMult.getLeft() instanceof Constant &&
-                leftMult.getRight().equals(rightMult.getRight())) {
-                double newVal = ((Constant) leftMult.getLeft()).getValue() + ((Constant) rightMult.getLeft()).getValue();
-                return new Multiply(new Constant(newVal), leftMult.getRight()).simplify();
-            }
-        }
-
-        return new Add(simplifiedLeft, simplifiedRight);
-    }
-    
-    
 }

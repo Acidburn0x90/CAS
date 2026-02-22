@@ -15,9 +15,10 @@ public class Power extends BinaryOperation {
 
     @Override
     public Expression differentiate(String varName) {
-        // d/dx [f(x)^n] = n * f(x)^(n-1) * f'(x)
+        // Generalized Power Rule with Chain Rule
         if (right instanceof Constant) {
             double n = ((Constant) right).getValue();
+            // d/dx [f(x)^n] = n * f(x)^(n-1) * f'(x)
             return new Multiply(
                 new Constant(n),
                 new Multiply(
@@ -27,7 +28,6 @@ public class Power extends BinaryOperation {
             ).simplify();
         }
 
-        // General Power Rule: f(x)^g(x)
         return new Multiply(this, new Add(
             new Multiply(right.differentiate(varName), new Log(left)), 
             new Multiply(right, new Divide(left.differentiate(varName), left))
