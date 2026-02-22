@@ -24,47 +24,37 @@ public class Multiply extends BinaryOperation {
         }
         return "(" + left + "*" + right + ")";
     }
-
     @Override
     public Expression simplify() {
-        Expression simplifiedLeft = left.simplify();
-        Expression simplifiedRight = right.simplify();
+        Expression sL = left.simplify();
+        Expression sR = right.simplify();
 
         // 1. Constant Folding
-        if (simplifiedLeft instanceof Constant && simplifiedRight instanceof Constant) {
-            return new Constant(((Constant) simplifiedLeft).getValue() * ((Constant) simplifiedRight).getValue());
+        if (sL instanceof Constant && sR instanceof Constant) {
+            return new Constant(((Constant) sL).getValue() * ((Constant) sR).getValue());
         }
-        if (simplifiedLeft instanceof Constant && ((Constant) simplifiedLeft).getValue() == 0) return new Constant(0);
-        if (simplifiedRight instanceof Constant && ((Constant) simplifiedRight).getValue() == 0) return new Constant(0);
-        if (simplifiedLeft instanceof Constant && ((Constant) simplifiedLeft).getValue() == 1) return simplifiedRight;
-        if (simplifiedRight instanceof Constant && ((Constant) simplifiedRight).getValue() == 1) return simplifiedLeft;
+        // Identity rules (0 and 1)
+        if (sL instanceof Constant && ((Constant) sL).getValue() == 0) return new Constant(0);
+        if (sR instanceof Constant && ((Constant) sR).getValue() == 0) return new Constant(0);
+        if (sL instanceof Constant && ((Constant) sL).getValue() == 1) return sR;
+        if (sR instanceof Constant && ((Constant) sR).getValue() == 1) return sL;
 
-        // 2. Advanced Power Merging (Fixes Test 2 and Test 4)
-        // Case: x^a * x^b -> x^(a+b)
-        if (simplifiedLeft instanceof Power && simplifiedRight instanceof Power) {
-            Power pLeft = (Power) simplifiedLeft;
-            Power pRight = (Power) simplifiedRight;
-            if (pLeft.getBase().equals(pRight.getBase())) {
-                return new Power(pLeft.getBase(), new Add(pLeft.getExponent(), pRight.getExponent())).simplify();
-            }
-        }
-        // Case: x * x^a -> x^(a+1)
-        if (simplifiedRight instanceof Power && ((Power) simplifiedRight).getBase().equals(simplifiedLeft)) {
-            return new Power(simplifiedLeft, new Add(((Power) simplifiedRight).getExponent(), new Constant(1))).simplify();
-        }
-        // Case: x^a * x -> x^(a+1)
-        if (simplifiedLeft instanceof Power && ((Power) simplifiedLeft).getBase().equals(simplifiedRight)) {
-            return new Power(simplifiedRight, new Add(((Power) simplifiedLeft).getExponent(), new Constant(1))).simplify();
+        // 2. Associative Reordering: Move constants to the left (x * 3 -> 3 * x)
+        if (sR instanceof Constant && !(sL instanceof Constant)) {
+            return new Multiply(sR, sL).simplify();
         }
 
-        if (simplifiedLeft.equals(simplifiedRight)) return new Power(simplifiedLeft, new Constant(2)).simplify();
-        
-        // 3. Associative Reordering: (x * 2) * 3 -> x * 6
-        if (simplifiedRight instanceof Constant && simplifiedLeft instanceof Multiply && ((Multiply) simplifiedLeft).right instanceof Constant) {
-            double newVal = ((Constant) simplifiedRight).getValue() * ((Constant) ((Multiply) simplifiedLeft).right).getValue();
-            return new Multiply(((Multiply) simplifiedLeft).left, new Constant(newVal)).simplify();
+        // 3. Constant Merging: 2 * (3 * x) -> 6 * x
+        if (sL instanceof Constant && sR instanceof Multiply && ((Multiply) sR).left instanceof Constant) {
+            double combined = ((Constant) sL).getValue() * ((Constant) ((Multiply) sR).left).getValue();
+            return new Multiply(new Constant(combined), ((Multiply) sR).right).simplify();
         }
 
-        return new Multiply(simplifiedLeft, simplifiedRight);
+        // 4. Power Merging (x^a * x^b -> x^(a+b))
+        if (sL instanceof Power && sR instanceof Power && ((Power) sL).getBase().equals(((Power) sR).getBase())) {
+            return new Power(((Power) sL).getBase(), new Add(((Power) sL).getExponent(), ((Power) sR).getExponent())).simplify();
+        }
+
+        return new Multiply(sL, sR);
     }
 }

@@ -36,6 +36,12 @@ public class Add extends BinaryOperation {
             double c = ((Constant) ((Multiply) sL).left).getValue();
             return new Multiply(new Constant(c + 1), sR).simplify();
         }
+
+        // Pattern: x + cx -> (1+c)x
+        if (sR instanceof Multiply && ((Multiply) sR).left instanceof Constant && ((Multiply) sR).right.equals(sL)) {
+            double c = ((Constant) ((Multiply) sR).left).getValue();
+            return new Multiply(new Constant(1 + c), sL).simplify();
+        }
         
         // Pattern: x + x -> 2x
         if (sL.equals(sR)) return new Multiply(new Constant(2), sL).simplify();

@@ -15,23 +15,25 @@ public class Power extends BinaryOperation {
 
     @Override
     public Expression differentiate(String varName) {
-        // Generalized Power Rule with Chain Rule
+        // IMPROVED POWER RULE: d/dx [f(x)^n] = n * f(x)^(n-1) * f'(x)
+        // This handles complex bases like sin(x)^2 correctly via the chain rule.
         if (right instanceof Constant) {
             double n = ((Constant) right).getValue();
-            // d/dx [f(x)^n] = n * f(x)^(n-1) * f'(x)
             return new Multiply(
                 new Constant(n),
                 new Multiply(
                     new Power(left, new Constant(n - 1)),
                     left.differentiate(varName)
                 )
-            ).simplify();
+            ).simplify(); // Final simplify ensures the chain rule result is clean
         }
 
+        // GENERAL POWER RULE: For complex cases like f(x)^g(x)
+        // Uses the identity: d/dx [f^g] = f^g * d/dx [g * ln(f)]
         return new Multiply(this, new Add(
             new Multiply(right.differentiate(varName), new Log(left)), 
             new Multiply(right, new Divide(left.differentiate(varName), left))
-        ));
+        )).simplify();
     }
     
     @Override
@@ -48,6 +50,7 @@ public class Power extends BinaryOperation {
             return new Constant(Math.pow(((Constant) simplifiedLeft).getValue(), ((Constant) simplifiedRight).getValue()));
         }
 
+        // Identity Rules
         if (simplifiedRight instanceof Constant && ((Constant) simplifiedRight).getValue() == 0) return new Constant(1);
         if (simplifiedRight instanceof Constant && ((Constant) simplifiedRight).getValue() == 1) return simplifiedLeft;
         if (simplifiedLeft instanceof Constant && ((Constant) simplifiedLeft).getValue() == 1) return new Constant(1);
