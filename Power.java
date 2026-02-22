@@ -15,14 +15,19 @@ public class Power extends BinaryOperation {
 
     @Override
     public Expression differentiate(String varName) {
-        // SIMPLE POWER RULE: d/dx [x^n] = n * x^(n-1)
-        // This keeps Test 2 and Test 4 from exploding into logs
-        if (right instanceof Constant && left instanceof Variable) {
+        // d/dx [f(x)^n] = n * f(x)^(n-1) * f'(x)
+        if (right instanceof Constant) {
             double n = ((Constant) right).getValue();
-            return new Multiply(new Constant(n), new Power(left, new Constant(n - 1))).simplify();
+            return new Multiply(
+                new Constant(n),
+                new Multiply(
+                    new Power(left, new Constant(n - 1)),
+                    left.differentiate(varName)
+                )
+            ).simplify();
         }
 
-        // GENERAL POWER RULE: For complex cases like f(x)^g(x)
+        // General Power Rule: f(x)^g(x)
         return new Multiply(this, new Add(
             new Multiply(right.differentiate(varName), new Log(left)), 
             new Multiply(right, new Divide(left.differentiate(varName), left))
@@ -43,7 +48,6 @@ public class Power extends BinaryOperation {
             return new Constant(Math.pow(((Constant) simplifiedLeft).getValue(), ((Constant) simplifiedRight).getValue()));
         }
 
-        // Identity Rules
         if (simplifiedRight instanceof Constant && ((Constant) simplifiedRight).getValue() == 0) return new Constant(1);
         if (simplifiedRight instanceof Constant && ((Constant) simplifiedRight).getValue() == 1) return simplifiedLeft;
         if (simplifiedLeft instanceof Constant && ((Constant) simplifiedLeft).getValue() == 1) return new Constant(1);
