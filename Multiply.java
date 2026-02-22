@@ -29,11 +29,10 @@ public class Multiply extends BinaryOperation {
         Expression sL = left.simplify();
         Expression sR = right.simplify();
 
-        // 1. Constant Folding
+        // 1. Constant Folding & Identity Rules
         if (sL instanceof Constant && sR instanceof Constant) {
             return new Constant(((Constant) sL).getValue() * ((Constant) sR).getValue());
         }
-        // Identity rules (0 and 1)
         if (sL instanceof Constant && ((Constant) sL).getValue() == 0) return new Constant(0);
         if (sR instanceof Constant && ((Constant) sR).getValue() == 0) return new Constant(0);
         if (sL instanceof Constant && ((Constant) sL).getValue() == 1) return sR;
@@ -50,9 +49,22 @@ public class Multiply extends BinaryOperation {
             return new Multiply(new Constant(combined), ((Multiply) sR).right).simplify();
         }
 
-        // 4. Power Merging (x^a * x^b -> x^(a+b))
+        // 4. POWER MERGING: The Fix for Test 4
+        // Case: x^a * x^b -> x^(a+b)
         if (sL instanceof Power && sR instanceof Power && ((Power) sL).getBase().equals(((Power) sR).getBase())) {
             return new Power(((Power) sL).getBase(), new Add(((Power) sL).getExponent(), ((Power) sR).getExponent())).simplify();
+        }
+        // Case: x * x^a -> x^(a+1)
+        if (sR instanceof Power && ((Power) sR).getBase().equals(sL)) {
+            return new Power(sL, new Add(((Power) sR).getExponent(), new Constant(1))).simplify();
+        }
+        // Case: x^a * x -> x^(a+1)
+        if (sL instanceof Power && ((Power) sL).getBase().equals(sR)) {
+            return new Power(sR, new Add(((Power) sL).getExponent(), new Constant(1))).simplify();
+        }
+        // Case: x * x -> x^2
+        if (sL.equals(sR)) {
+            return new Power(sL, new Constant(2)).simplify();
         }
 
         return new Multiply(sL, sR);
